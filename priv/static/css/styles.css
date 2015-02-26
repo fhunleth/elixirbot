@@ -1,0 +1,25 @@
+body {
+  background: #666 url(/video?123) no-repeat bottom;
+  background-size: 100% auto;
+  font-family: sans-serif;
+  font-size: 14px;
+  padding: 1em;
+  overflow: hidden;
+}
+
+#main {
+  background: #eee;
+  width: 200px;
+  padding: 1em;
+  margin: 0;
+  border: 1px solid 99c;
+  overflow: hidden;
+}
+
+#retrostick {
+  opacity: .85;
+}
+
+span.time, .reply {
+  color: #390;
+}

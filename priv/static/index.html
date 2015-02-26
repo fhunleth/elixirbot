@@ -1,0 +1,91 @@
+<html>
+  <head>
+    <title>ElixirBot</title>
+    <link href='/static/css/styles.css' rel='stylesheet' type='text/css'/>
+    <link href='/static/css/retro-joystick.css' rel='stylesheet' type='text/css'/>
+    <script type="text/javascript" src="/static/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/RetroJoyStick.js"></script>
+  </head>
+  <body>
+    <div id='main'>
+        <b>ElixirBot</b>
+        <hr>
+        <div id='statusbar'>Status: <span id='status'></span></div>
+        <div>Battery: <span id='server_time' class='time'></span></div>
+        <div>Motors: <span id='server_reply' class='reply'></span></div>
+    </div>
+
+  <script>
+var SocketHandler = (function(){
+  var my = {},
+    websocket,
+    messages = 0;
+
+    var retroJoystick = new RetroJoyStick({
+        position: 'bottom_left',
+        //snapping: true,
+        //snappingPixels: 30
+        });
+
+    retroJoystick.on('change', function () {
+        message = { 'message': "d:"+this.distance+",a:"+this.angle};
+        websocket.send(JSON.stringify(message));
+        });
+
+  my.init = function(){
+    $('#send').click(sendMessage);
+    connect();
+  }
+  function connect() {
+    websocket = new WebSocket('ws://' + window.location.host + '/websocket');
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) };
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
+  };
+
+  function onMessage(evt) {
+    //console.log(evt.data);
+    message = JSON.parse(evt.data);
+    if ( message.time !== undefined) {
+      $('#server_time').html(message.time);
+    }
+    if(message.reply !== undefined) {
+      $('#server_reply').html(message.reply);
+    }
+  };
+
+  function sendMessage(){
+    value = $('#message_string').val();
+    message = { 'message': value};
+    websocket.send(JSON.stringify(message));
+  };
+
+  function disconnect() {
+    websocket.close();
+  };
+
+  function onOpen(evt) {
+    updateStatus('<span style="color: green;">CONNECTED</span>');
+  };
+
+  function onClose(evt) {
+    updateStatus('<span style="color: red;">DISCONNECTED</span>');
+  };
+
+  function onClose(evt) {
+    updateStatus('<span style="color: red;">ERROR: ' + evt.data + '</span>');
+  };
+
+  function updateStatus(txt) {
+    $('#status').html(txt);
+  };
+
+  return my;
+}());
+SocketHandler.init();
+  </script>
+  </body>
+</html>
+
+
