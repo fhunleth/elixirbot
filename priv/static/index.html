@@ -11,7 +11,7 @@
         <b>ElixirBot</b>
         <hr>
         <div id='statusbar'>Status: <span id='status'></span></div>
-        <div>Battery: <span id='server_time' class='time'></span></div>
+        <div>Uptime: <span id='server_time' class='time'></span></div>
         <div>Motors: <span id='server_reply' class='reply'></span></div>
     </div>
 
@@ -28,7 +28,7 @@ var SocketHandler = (function(){
         });
 
     retroJoystick.on('change', function () {
-        message = { 'message': "d:"+this.distance+",a:"+this.angle};
+        message = { 'distance': this.distance, 'angle': this.angle};
         websocket.send(JSON.stringify(message));
         });
 

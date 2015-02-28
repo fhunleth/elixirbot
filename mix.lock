@@ -2,10 +2,10 @@
   "cowboy": {:hex, :cowboy, "1.0.0"},
   "cowlib": {:hex, :cowlib, "1.0.1"},
   "elixir_ale": {:git, "git://github.com/fhunleth/elixir_ale.git", "572de3dcfa986c6b12e2b1e9af10f07e39515e30", [tag: "master"]},
+  "exjsx": {:hex, :exjsx, "3.1.0"},
   "exrm": {:hex, :exrm, "0.15.0"},
-  "jsex": {:hex, :jsex, "2.0.0"},
   "jsx": {:hex, :jsx, "2.4.0"},
   "net_basic": {:git, "git://github.com/fhunleth/net_basic.ex.git", "75874b30085acd475bc30d68913e2e171b0badb0", [tag: "master"]},
-  "net_managers": {:git, "git://github.com/fhunleth/net_managers.ex.git", "c9492bf14fe12ea8bef4e4d5d1ee442d50d653e7", [tag: "master"]},
+  "net_managers": {:git, "git://github.com/fhunleth/net_managers.ex.git", "a63b50b0e3fe6c78d9bd62cebdc702c50eb8f3a0", [tag: "master"]},
   "ranch": {:hex, :ranch, "1.0.0"},
   "wpa_supplicant": {:git, "git://github.com/fhunleth/wpa_supplicant.ex.git", "2a938ea67659b49e35141610ae97c9b906084a8c", [tag: "master"]}}

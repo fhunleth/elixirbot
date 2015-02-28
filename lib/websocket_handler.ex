@@ -1,7 +1,7 @@
 defmodule WebsocketHandler do
   @behaviour :cowboy_websocket_handler
 
-  def init({tcp, http}, _req, _opts) do
+  def init({:tcp, :http}, _req, _opts) do
     {:upgrade, :protocol, :cowboy_websocket}
   end
 
@@ -18,11 +18,11 @@ defmodule WebsocketHandler do
   end
 
   def websocket_handle({:text, content}, req, state) do
+    { :ok, msg } = JSX.decode(content)
 
-    { :ok, %{ "message" => message} } = JSEX.decode(content)
+    result = change_motors(msg["distance"], msg["angle"])
 
-    rev = String.reverse(message)
-    { :ok, reply } = JSEX.encode(%{ reply: rev})
+    { :ok, reply } = JSX.encode(%{ reply: result})
 
     {:reply, {:text, reply}, req, state}
   end
@@ -31,7 +31,7 @@ defmodule WebsocketHandler do
     {:ok, req, state}
   end
 
-  def websocket_info({timeout, _ref, _foo}, req, state) do
+  def websocket_info({:timeout, _ref, _foo}, req, state) do
     # TODO
     time = time_as_string()
     { :ok, message } = JSEX.encode(%{ time: time})
@@ -51,5 +51,24 @@ defmodule WebsocketHandler do
       |> :erlang.list_to_binary()
   end
 
+  defp change_motors(distance, _angle) when distance < 10 do
+    I2c.write(BotI2c, <<0, 22, 22>>)
+  end
+  # forward
+  defp change_motors(_distance, angle) when angle < 45 or angle >= 315 do
+    I2c.write(BotI2c, <<0, 17, 28>>)
+  end
+  # right
+  defp change_motors(_distance, angle) when angle < 135 or angle >= 45 do
+    I2c.write(BotI2c, <<0, 17, 17>>)
+  end
+  # backward
+  defp change_motors(_distance, angle) when angle < 225 or angle >= 135 do
+    I2c.write(BotI2c, <<0, 28, 17>>)
+  end
+  # left
+  defp change_motors(_distance, angle) when angle < 315 or angle >= 225 do
+    I2c.write(BotI2c, <<0, 28, 28>>)
+  end
 end
 

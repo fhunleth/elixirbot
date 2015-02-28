@@ -14,7 +14,7 @@ defmodule Elixirbot.Mixfile do
   def application do
     [
       mod: { Elixirbot, [] },
-      applications: [:jsex, :cowboy, :ranch, :elixir_ale, :net_managers]
+      applications: [:exjsx, :cowboy, :ranch, :elixir_ale, :net_managers]
     ]
   end
 
@@ -29,7 +29,7 @@ defmodule Elixirbot.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     [ { :cowboy, "1.0.0" },
-      { :jsex, "~> 2.0.0" },
+      { :exjsx, "~> 3.1.0" },
       { :exrm, "~> 0.15.0"},
       { :elixir_ale, github: "fhunleth/elixir_ale", tag: "master"},
       { :net_managers, github: "fhunleth/net_managers.ex", tag: "master" }
