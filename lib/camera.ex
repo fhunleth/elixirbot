@@ -30,7 +30,7 @@ defmodule Camera do
   def init(_arg) do
     executable = "/usr/bin/raspijpgs"
     port = Port.open({:spawn_executable, executable},
-      [{:args, ["--vflip", "--framing", "header", "--output", "-"]}, {:packet, 4}, :use_stdio, :binary, :exit_status])
+      [{:args, ["--vflip", "--hflip", "--framing", "header", "--output", "-"]}, {:packet, 4}, :use_stdio, :binary, :exit_status])
     { :ok, %Camera{port: port} }
   end
 
