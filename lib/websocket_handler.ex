@@ -14,6 +14,8 @@ defmodule WebsocketHandler do
   end
 
   def websocket_terminate(_reason, _req, _state) do
+    # stop the motors - it's funny when you don't do this.
+    I2c.write(BotI2c, <<0, 22, 22>>)
     :ok
   end
 
@@ -56,19 +58,19 @@ defmodule WebsocketHandler do
   end
   # forward
   defp change_motors(_distance, angle) when angle < 45 or angle >= 315 do
-    I2c.write(BotI2c, <<0, 17, 28>>)
+    I2c.write(BotI2c, <<0, 28, 28>>)
   end
   # right
-  defp change_motors(_distance, angle) when angle < 135 or angle >= 45 do
-    I2c.write(BotI2c, <<0, 17, 17>>)
-  end
-  # backward
-  defp change_motors(_distance, angle) when angle < 225 or angle >= 135 do
+  defp change_motors(_distance, angle) when angle < 135 and angle >= 45 do
     I2c.write(BotI2c, <<0, 28, 17>>)
   end
+  # backward
+  defp change_motors(_distance, angle) when angle < 225 and angle >= 135 do
+    I2c.write(BotI2c, <<0, 17, 17>>)
+  end
   # left
-  defp change_motors(_distance, angle) when angle < 315 or angle >= 225 do
-    I2c.write(BotI2c, <<0, 28, 28>>)
+  defp change_motors(_distance, angle) when angle < 315 and angle >= 225 do
+    I2c.write(BotI2c, <<0, 17, 28>>)
   end
 end
 
