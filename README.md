@@ -1,5 +1,7 @@
 # ElixirBot
 
+![ElixirBot!!!](docs/elixirbot-640x515.jpg)
+
 ## Building
 
   1. Build a `nerves_rpi_elixirbot_defconfig` configuration of Nerves
