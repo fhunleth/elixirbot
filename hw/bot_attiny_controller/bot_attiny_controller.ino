@@ -31,8 +31,18 @@
  *
  * Programming an ATtiny85 with an Arduino Uno
  *
- * 1. Program the ArduinoISP firmware onto the Uno (it's an example Arduino program)
- * 2. Wire the Uno to the ATtiny85 like this:
+ * 1. Untar tiny.tgz into your ~/sketchbook/hardware or whereever your
+ *    Arduino sketchbook directory is. These files come from http://hlt.media.mit.edu/?p=1229,
+ *    but they're not always available. As a bonus, I've already made
+ *    a boards.txt that defines the right ATtiny85 configuration for this project. 
+ * 2. In the Arduino IDE, program the ArduinoISP firmware onto the Uno 
+ *    (it's an example Arduino program)
+ * 3. In Arduino IDE, set the board to "ATtiny85 @ 8 MHz (internal oscillator; BOD disabled)
+ * 4. Set the programmer to "Arduino as ISP"
+ *
+ *  -- Setup steps are done --
+ *
+ * 5. Wire the Uno to the ATtiny85 like this:
  *      Arduino +5V    ---> ATtiny Pin 8
  *      Arduino Ground ---> ATtiny Pin 4
  *      Arduino Pin 10 ---> ATtiny Pin 1
@@ -40,10 +50,8 @@
  *      Arduino Pin 12 ---> ATtiny Pin 6
  *      Arduino Pin 13 ---> ATtiny Pin 7
  *      Arduino Reset, Arduino group -> connect with 10 uF capacitor
- * 3. In Arduino IDE, set the board to "ATtiny85 @ 8 MHz (internal oscillator; BOD disabled)
- * 4. Set the programmer to "Arduino as ISP"
  * 5. Burn bootloader (VERY, VERY IMPORTANT. I learned the hard way.)
- * 6. Upload
+ * 6. Compile and upload this program.
  */
 
 
