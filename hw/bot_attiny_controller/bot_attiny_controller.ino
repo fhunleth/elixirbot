@@ -49,11 +49,11 @@
  * 1. Untar tiny.tgz into your ~/sketchbook/hardware or whereever your
  *    Arduino sketchbook directory is. These files come from http://hlt.media.mit.edu/?p=1229,
  *    but they're not always available. As a bonus, I've already made
- *    a boards.txt that defines the right ATtiny85 configuration for this project. 
+ *    a boards.txt that defines the right ATtiny85 configuration for this project.
  * 2. In ~/sketchbook/libraries, run:
  *       git clone https://github.com/rambo/TinyWire.git
  * 3. Restart the Arduino IDE if you have it open, so that it finds the TinyWireS library
- * 4. In the Arduino IDE, program the ArduinoISP firmware onto the Uno 
+ * 4. In the Arduino IDE, program the ArduinoISP firmware onto the Uno
  *    (it's an example Arduino program)
  * 5. In Arduino IDE, set the board to "ATtiny85 @ 8 MHz (internal oscillator; BOD disabled)
  * 6. Set the programmer to "Arduino as ISP"
@@ -91,13 +91,13 @@
 #include <TinyWireS.h>
 
 enum I2cRegisters {
-  I2cRegLeftServoLo = 0,
-  I2cRegLeftServoHi,
-  I2cRegRightServoLo,
-  I2cRegRightServoHi,
-  I2cRegBatteryLo,
-  I2cRegBatteryHi,
-  I2cRegCount
+    I2cRegLeftServoLo = 0,
+    I2cRegLeftServoHi,
+    I2cRegRightServoLo,
+    I2cRegRightServoHi,
+    I2cRegBatteryLo,
+    I2cRegBatteryHi,
+    I2cRegCount
 };
 
 volatile uint8_t currentRegister = 0;
@@ -107,10 +107,10 @@ uint16_t rightServoMicros = 1500;
 uint16_t batteryMicroVolts = 0;
 
 #if F_CPU == 8000000L
-    // Divide FCLK by 64 -> 8 MHz/64 = 125 KHz (each tick is 8 uS)
-    #define TCCR1_CS_BITS 0x7
+// Divide FCLK by 64 -> 8 MHz/64 = 125 KHz (each tick is 8 uS)
+#define TCCR1_CS_BITS 0x7
 #else
-    #error Unexpected CPU speed
+#error Unexpected CPU speed
 #endif
 
 /*
@@ -121,28 +121,28 @@ void requestEvent()
     byte value = 0;
     switch (currentRegister) {
     case I2cRegLeftServoLo:
-       value = lowByte(leftServoMicros);
-       break;
+        value = lowByte(leftServoMicros);
+        break;
     case I2cRegLeftServoHi:
-       value = highByte(leftServoMicros);
-       break;
+        value = highByte(leftServoMicros);
+        break;
     case I2cRegRightServoLo:
-       value = lowByte(rightServoMicros);
-       break;
+        value = lowByte(rightServoMicros);
+        break;
     case I2cRegRightServoHi:
-       value = highByte(rightServoMicros);
-       break;
+        value = highByte(rightServoMicros);
+        break;
     case I2cRegBatteryLo:
-       value = lowByte(batteryMicroVolts);
-       break;
+        value = lowByte(batteryMicroVolts);
+        break;
     case I2cRegBatteryHi:
-       value = highByte(batteryMicroVolts);
-       break;
+        value = highByte(batteryMicroVolts);
+        break;
     }
     TinyWireS.send(value);
     currentRegister++;
     if (currentRegister >= I2cRegCount)
-       currentRegister = 0;
+        currentRegister = 0;
 }
 
 /*
@@ -150,71 +150,71 @@ void requestEvent()
  */
 void receiveEvent(uint8_t howMany)
 {
-   static uint16_t nextLeftServoMicros = 0;
-   static uint16_t nextRightServoMicros = 0;
+    static uint16_t nextLeftServoMicros = 0;
+    static uint16_t nextRightServoMicros = 0;
 
     // Sanity check
     if (howMany < 1 || howMany > I2cRegCount)
-      return;
+        return;
 
     // Read register position
     currentRegister = TinyWireS.receive();
     howMany--;
 
     if (currentRegister >= I2cRegCount) {
-       // If invalid register, ignore the request
-       currentRegister = 0;
-       return;
+        // If invalid register, ignore the request
+        currentRegister = 0;
+        return;
     }
-    
+
     // If any bytes left, write them to registers
     while (howMany) {
-       byte value = TinyWireS.receive();
-       howMany--;
-      switch (currentRegister) {
-      case I2cRegLeftServoLo:
-         nextLeftServoMicros = (nextLeftServoMicros & 0xff00) | value;
-         break;
-      case I2cRegLeftServoHi:
-         nextLeftServoMicros = (nextLeftServoMicros & 0x00ff) | (value << 8);
-         break;
-      case I2cRegRightServoLo:
-         nextRightServoMicros = (nextRightServoMicros & 0xff00) | value;
-         break;
-      case I2cRegRightServoHi:
-         nextRightServoMicros = (nextRightServoMicros & 0x00ff) | (value << 8);
-         break;
-      default:
-         break;
-      }
-      currentRegister++;
-      if (currentRegister >= I2cRegCount)
-         currentRegister = 0;
+        byte value = TinyWireS.receive();
+        howMany--;
+        switch (currentRegister) {
+        case I2cRegLeftServoLo:
+            nextLeftServoMicros = (nextLeftServoMicros & 0xff00) | value;
+            break;
+        case I2cRegLeftServoHi:
+            nextLeftServoMicros = (nextLeftServoMicros & 0x00ff) | (value << 8);
+            break;
+        case I2cRegRightServoLo:
+            nextRightServoMicros = (nextRightServoMicros & 0xff00) | value;
+            break;
+        case I2cRegRightServoHi:
+            nextRightServoMicros = (nextRightServoMicros & 0x00ff) | (value << 8);
+            break;
+        default:
+            break;
+        }
+        currentRegister++;
+        if (currentRegister >= I2cRegCount)
+            currentRegister = 0;
     }
 
     if (nextLeftServoMicros >= 1000 && nextLeftServoMicros <= 2000)
-         leftServoMicros = nextLeftServoMicros;
-    
+        leftServoMicros = nextLeftServoMicros;
+
     if (nextRightServoMicros >= 1000 && nextRightServoMicros <= 2000)
-         rightServoMicros = nextRightServoMicros;   
+        rightServoMicros = nextRightServoMicros;
 }
 
 void setup()
 {
     // Servos like PWM durations around 1.5 ms with periods of 15-20 ms
     // The important part is the duration.
-    
+
     // Since the ATtiny85 only has an 8 bit PWM, there's not enough precision
     // to just use a PWM (aka Timer/Counter). To see this, we'd like to get
     // 180 or more steps between 1-2 ms (so that we can do 0-180 degrees with
-    // 1 degree resolution). This requires about 5 uS resolution. To get to 
+    // 1 degree resolution). This requires about 5 uS resolution. To get to
     // 20 ms would require counting to 4000, and that's not considering that
     // the ATtiny85 can't be set to count at any frequency.
-    
+
     // What we do instead is send a pulse using Timer/Counter1 and then busy
     // wait between pulses. The busy wait doesn't need to be perfect, so if
     // I2C handling delays things a little, that's ok.
-    
+
     pinMode(1, OUTPUT); // Left servo
     pinMode(4, OUTPUT); // Right servo
     pinMode(3, INPUT);  // Battery level
@@ -234,12 +234,12 @@ uint8_t mapServoMicros(uint16_t micros)
 
 void loop()
 {
-    // Our target is around 20 ms between pulses, so wait for 19 ms 
+    // Our target is around 20 ms between pulses, so wait for 19 ms
     // between pulses to give time for ADC read and calculations.
     tws_delay(19); // Can't call delay() due to TinyWireS limitation
 
     // Sample the battery voltage (this takes about 100 microseconds according to docs)
-    // The battery voltage is halved by a resister divider so that 6 V is 
+    // The battery voltage is halved by a resister divider so that 6 V is
     // less that the 3.3 V reference voltage.
     batteryMicroVolts = (uint16_t) (uint32_t(analogRead(3)) * 2 * 3300 / 1023); // 6600 microvolts at 1023 counts
 
@@ -248,11 +248,11 @@ void loop()
     TCNT1 = 0;
 
     // Calculate the new pulse durations
-    // This calculation takes more than a few microseconds, so will need to restart the 
+    // This calculation takes more than a few microseconds, so will need to restart the
     // TCNT1 to accurately measure the duration
     OCR1A = mapServoMicros(leftServoMicros);
     OCR1B = mapServoMicros(rightServoMicros);
-    
+
     // Force both outputs high.
     // The way this is done is by telling the Timer/Counter to set the outputs
     // high on match and then artificially trigger a match.
@@ -260,10 +260,10 @@ void loop()
     //       controlling it.
     TCCR1 = (1 << COM1A1) | (1 << COM1A0) | TCCR1_CS_BITS;
     GTCCR = (1 << COM1B1) | (1 << COM1B0) | (1 << FOC1B) | (1 << FOC1A);
-    
+
     // Start the counter counting for real now that the outputs are officially high
-    TCNT1 = 0;  
-    
+    TCNT1 = 0;
+
     // Tell the Timer/Counter to set the outputs low on match (a real match this time)
     GTCCR = (1 << COM1B1) | (0 << COM1B0);
     TCCR1 = (1 << COM1A1) | (0 << COM1A0) | TCCR1_CS_BITS;
