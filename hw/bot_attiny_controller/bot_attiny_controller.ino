@@ -6,11 +6,17 @@
  * continuous turn servos. It also has an ADC input for checking
  * the battery level.
  *
- * To test on Linux:
+ * To test on Raspian:
  *
- * # # Assume that the ATtiny85's I2C pins are connected to the
- * # # host's I2C bus 1
- * # i2cdetect -y 1
+ * Connect the ATtiny85's I2C pins to the I2C pins on the
+ * Raspberry Pi's GPIO connector
+ *
+ * # sudo apt-get install i2c-tools
+ * # sudo raspi-config
+ * In raspi-config, enable I2C through the advanced menu.
+ *
+ * # sudo modprobe i2c-dev
+ * # sudo i2cdetect -y 1
  *      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
  * 00:          -- 04 -- -- -- -- -- -- -- -- -- -- --
  * 10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
@@ -20,14 +26,23 @@
  * 50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
  * 60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
  * 70: -- -- -- -- -- -- -- --
- * # i2cget -y 1 4 0  ## get left PWM duration
- * 0x60
- * # i2cget -y 1 4 1  ## get right PWM duration
- * 0x60
- * # i2cget -y 1 4 2  ## get battery voltage/2 (0-255)
- * 0xbe
- * # i2cset -y 1 4 0 160 ## set left PWM duration
- * # i2cset -y 1 4 1 160 ## set right PWM duration
+ *
+ * If the device doesn't show up (i.e. the 04), then
+ * check the connections.
+ *
+ * # sudo i2cget -y 1 4 0 w    ## get left servo pulse duration
+ * 0x05dc                      ## 0x05dc = 1500 microsecond pulse
+ *
+ * # sudo i2cget -y 1 4 2 w    ## get right servopulse duration
+ * 0x05dc
+ *
+ * # sudo i2cget -y 1 4 4 w    ## get battery voltage
+ * 0x138e                      ## 0x138e = 5006 microVolts
+ *
+ * # sudo i2cset -y 1 4 0 1200 ## set the left servo pulse to 1200 us
+ * # sudo i2cset -y 1 4 2 1500 ## set the right right pulse to 1500 us
+ *
+ * *** There are intermittent I2C failures. I have not tracked them down. ***
  *
  * Programming an ATtiny85 with an Arduino Uno
  *
@@ -35,14 +50,17 @@
  *    Arduino sketchbook directory is. These files come from http://hlt.media.mit.edu/?p=1229,
  *    but they're not always available. As a bonus, I've already made
  *    a boards.txt that defines the right ATtiny85 configuration for this project. 
- * 2. In the Arduino IDE, program the ArduinoISP firmware onto the Uno 
+ * 2. In ~/sketchbook/libraries, run:
+ *       git clone https://github.com/rambo/TinyWire.git
+ * 3. Restart the Arduino IDE if you have it open, so that it finds the TinyWireS library
+ * 4. In the Arduino IDE, program the ArduinoISP firmware onto the Uno 
  *    (it's an example Arduino program)
- * 3. In Arduino IDE, set the board to "ATtiny85 @ 8 MHz (internal oscillator; BOD disabled)
- * 4. Set the programmer to "Arduino as ISP"
+ * 5. In Arduino IDE, set the board to "ATtiny85 @ 8 MHz (internal oscillator; BOD disabled)
+ * 6. Set the programmer to "Arduino as ISP"
  *
  *  -- Setup steps are done --
  *
- * 5. Wire the Uno to the ATtiny85 like this:
+ * 7. Wire the Uno to the ATtiny85 like this:
  *      Arduino +5V    ---> ATtiny Pin 8
  *      Arduino Ground ---> ATtiny Pin 4
  *      Arduino Pin 10 ---> ATtiny Pin 1
@@ -50,8 +68,8 @@
  *      Arduino Pin 12 ---> ATtiny Pin 6
  *      Arduino Pin 13 ---> ATtiny Pin 7
  *      Arduino Reset, Arduino group -> connect with 10 uF capacitor
- * 5. Burn bootloader (VERY, VERY IMPORTANT. I learned the hard way.)
- * 6. Compile and upload this program.
+ * 8. Burn bootloader (VERY, VERY IMPORTANT. I learned the hard way.)
+ * 9. Compile and upload this program.
  */
 
 
@@ -61,10 +79,10 @@
  * Pin   Function
  * 1     NRESET
  * 2     PB3 - Battery level/2 * 3.3/255
- * 3     PB4 - Right servo
+ * 3     PB4 - Right servo (OC1B)
  * 4     GND
  * 5     PB0 - I2C SDA
- * 6     PB1 - Left servo
+ * 6     PB1 - Left servo (OC1A)
  * 7     PB2 - I2C SCL
  * 8     VCC (+3.3V)
  */
@@ -72,58 +90,80 @@
 #define I2C_SLAVE_ADDRESS 0x4
 #include <TinyWireS.h>
 
-// The default buffer size, Can't recall the scope of defines right now
-#ifndef TWI_RX_BUFFER_SIZE
-#define TWI_RX_BUFFER_SIZE ( 16 )
+enum I2cRegisters {
+  I2cRegLeftServoLo = 0,
+  I2cRegLeftServoHi,
+  I2cRegRightServoLo,
+  I2cRegRightServoHi,
+  I2cRegBatteryLo,
+  I2cRegBatteryHi,
+  I2cRegCount
+};
+
+volatile uint8_t currentRegister = 0;
+
+uint16_t leftServoMicros = 1500;
+uint16_t rightServoMicros = 1500;
+uint16_t batteryMicroVolts = 0;
+
+#if F_CPU == 8000000L
+    // Divide FCLK by 64 -> 8 MHz/64 = 125 KHz (each tick is 8 uS)
+    #define TCCR1_CS_BITS 0x7
+#else
+    #error Unexpected CPU speed
 #endif
 
-// Tracks the current register pointer position
-volatile byte reg_position;
-const byte reg_count = 3;
-
-/**
- * This is called for each read request we receive, never put more than one byte of data (with TinyWireS.send) to the
- * send-buffer when using this callback
+/*
+ * Handle a 'get' request from the I2C master.
  */
 void requestEvent()
 {
     byte value = 0;
-    switch (reg_position) {
-    case 0:
-       value = OCR1A;
+    switch (currentRegister) {
+    case I2cRegLeftServoLo:
+       value = lowByte(leftServoMicros);
        break;
-    case 1:
-       value = OCR1B;
+    case I2cRegLeftServoHi:
+       value = highByte(leftServoMicros);
        break;
-    case 2:
-       value = byte(analogRead(3) >> 2);
+    case I2cRegRightServoLo:
+       value = lowByte(rightServoMicros);
+       break;
+    case I2cRegRightServoHi:
+       value = highByte(rightServoMicros);
+       break;
+    case I2cRegBatteryLo:
+       value = lowByte(batteryMicroVolts);
+       break;
+    case I2cRegBatteryHi:
+       value = highByte(batteryMicroVolts);
        break;
     }
     TinyWireS.send(value);
-    reg_position++;
-    if (reg_position >= reg_count)
-       reg_position = 0;
+    currentRegister++;
+    if (currentRegister >= I2cRegCount)
+       currentRegister = 0;
 }
 
-/**
- * The I2C data receive handler
- *
- * This needs to complete before the next incoming transaction (start, data, restart/stop) on the bus does
- * so be quick, set flags for long running tasks to be called from the mainloop instead of running them directly,
+/*
+ * Handle a 'set' request from the I2C master.
  */
 void receiveEvent(uint8_t howMany)
 {
+   static uint16_t nextLeftServoMicros = 0;
+   static uint16_t nextRightServoMicros = 0;
+
     // Sanity check
-    if (howMany < 1 || howMany > TWI_RX_BUFFER_SIZE)
+    if (howMany < 1 || howMany > I2cRegCount)
       return;
 
     // Read register position
-    reg_position = TinyWireS.receive();
+    currentRegister = TinyWireS.receive();
     howMany--;
 
-    if (reg_position >= reg_count) {
+    if (currentRegister >= I2cRegCount) {
        // If invalid register, ignore the request
-       reg_position = 0;
+       currentRegister = 0;
        return;
     }
     
@@ -131,60 +171,101 @@ void receiveEvent(uint8_t howMany)
     while (howMany) {
        byte value = TinyWireS.receive();
        howMany--;
-      switch (reg_position) {
-      case 0:
-         if (value >= 17 && value <= 28)
-            OCR1A = value;
+      switch (currentRegister) {
+      case I2cRegLeftServoLo:
+         nextLeftServoMicros = (nextLeftServoMicros & 0xff00) | value;
          break;
-      case 1:
-         if (value >= 17 && value <= 28)
-            OCR1B = value;
+      case I2cRegLeftServoHi:
+         nextLeftServoMicros = (nextLeftServoMicros & 0x00ff) | (value << 8);
+         break;
+      case I2cRegRightServoLo:
+         nextRightServoMicros = (nextRightServoMicros & 0xff00) | value;
+         break;
+      case I2cRegRightServoHi:
+         nextRightServoMicros = (nextRightServoMicros & 0x00ff) | (value << 8);
          break;
       default:
          break;
       }
-      reg_position++;
-      if (reg_position >= reg_count)
-         reg_position = 0;
+      currentRegister++;
+      if (currentRegister >= I2cRegCount)
+         currentRegister = 0;
     }
-}
 
+    if (nextLeftServoMicros >= 1000 && nextLeftServoMicros <= 2000)
+         leftServoMicros = nextLeftServoMicros;
+    
+    if (nextRightServoMicros >= 1000 && nextRightServoMicros <= 2000)
+         rightServoMicros = nextRightServoMicros;   
+}
 
 void setup()
 {
     // Servos like PWM durations around 1.5 ms with periods of 15-20 ms
-    //
-    // Set Timer/Counter 1 to increment at 15625 Hz (8 MHz/512) and
-    // count to 255. This gives a PWM period of ~16 ms (256/15625)
-    // See ATtiny25/45/85 datasheet
-    // OCR1C = value to count up to (period for PWM)
-    // COM1A1,COM1A0 = 1,0  # set output low when counter matches OCR1A value (See Table 13-1)
-    OCR1C = 255; // Count to 255, then reset counter
-    OCR1A = 22; // servo idle (~1.5 ms)
-    OCR1B = 22; // servo idle (~1.5 ms)
-    TCCR1 = _BV(PWM1A) | _BV(COM1A1) | 0xa; // Enable PWM1A; CK/512 (Table 12-5) NOTE: Table 12-5 not for PWM Mode???
-    GTCCR = _BV(PWM1B) | _BV(COM1B1);       // Enable PWM1B
-
-    pinMode(1, OUTPUT); // PWM1A
-    pinMode(4, OUTPUT); // PWM1B
+    // The important part is the duration.
+    
+    // Since the ATtiny85 only has an 8 bit PWM, there's not enough precision
+    // to just use a PWM (aka Timer/Counter). To see this, we'd like to get
+    // 180 or more steps between 1-2 ms (so that we can do 0-180 degrees with
+    // 1 degree resolution). This requires about 5 uS resolution. To get to 
+    // 20 ms would require counting to 4000, and that's not considering that
+    // the ATtiny85 can't be set to count at any frequency.
+    
+    // What we do instead is send a pulse using Timer/Counter1 and then busy
+    // wait between pulses. The busy wait doesn't need to be perfect, so if
+    // I2C handling delays things a little, that's ok.
+    
+    pinMode(1, OUTPUT); // Left servo
+    pinMode(4, OUTPUT); // Right servo
     pinMode(3, INPUT);  // Battery level
 
     /**
      * Reminder: taking care of pull-ups is the masters job
      */
-
     TinyWireS.begin(I2C_SLAVE_ADDRESS);
     TinyWireS.onReceive(receiveEvent);
     TinyWireS.onRequest(requestEvent);
 }
 
+uint8_t mapServoMicros(uint16_t micros)
+{
+    return (uint8_t) (uint32_t(micros - 16) * 254 / 2032) + 1;
+}
+
 void loop()
 {
-    /**
-     * This is the only way we can detect stop condition (http://www.avrfreaks.net/index.php?name=PNphpBB2&file=viewtopic&p=984716&sid=82e9dc7299a8243b86cf7969dd41b5b5#984716)
-     * it needs to be called in a very tight loop in order not to miss any (REMINDER: Do *not* use delay() anywhere, use tws_delay() instead).
-     * It will call the function registered via TinyWireS.onReceive(); if there is data in the buffer on stop.
-     */
-    TinyWireS_stop_check();
+    // Our target is around 20 ms between pulses, so wait for 19 ms 
+    // between pulses to give time for ADC read and calculations.
+    tws_delay(19); // Can't call delay() due to TinyWireS limitation
+
+    // Sample the battery voltage (this takes about 100 microseconds according to docs)
+    // The battery voltage is halved by a resister divider so that 6 V is 
+    // less that the 3.3 V reference voltage.
+    batteryMicroVolts = (uint16_t) (uint32_t(analogRead(3)) * 2 * 3300 / 1023); // 6600 microvolts at 1023 counts
+
+    // Start the counter over from 0 (Have to do this first to avoid spurious pulse since
+    // there's no stopping the timer/counter)
+    TCNT1 = 0;
+
+    // Calculate the new pulse durations
+    // This calculation takes more than a few microseconds, so will need to restart the 
+    // TCNT1 to accurately measure the duration
+    OCR1A = mapServoMicros(leftServoMicros);
+    OCR1B = mapServoMicros(rightServoMicros);
+    
+    // Force both outputs high.
+    // The way this is done is by telling the Timer/Counter to set the outputs
+    // high on match and then artificially trigger a match.
+    // NOTE: You can't just set the output high since the Timer/Counter is now
+    //       controlling it.
+    TCCR1 = (1 << COM1A1) | (1 << COM1A0) | TCCR1_CS_BITS;
+    GTCCR = (1 << COM1B1) | (1 << COM1B0) | (1 << FOC1B) | (1 << FOC1A);
+    
+    // Start the counter counting for real now that the outputs are officially high
+    TCNT1 = 0;  
+    
+    // Tell the Timer/Counter to set the outputs low on match (a real match this time)
+    GTCCR = (1 << COM1B1) | (0 << COM1B0);
+    TCCR1 = (1 << COM1A1) | (0 << COM1A0) | TCCR1_CS_BITS;
 }
 
