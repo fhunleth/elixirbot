@@ -11,7 +11,7 @@
         <b>ElixirBot</b>
         <hr>
         <div id='statusbar'>Status: <span id='status'></span></div>
-        <div>Uptime: <span id='server_time' class='time'></span></div>
+        <div>Battery: <span id='server_volts' class='volts'></span></div>
         <div>Motors: <span id='server_reply' class='reply'></span></div>
     </div>
 
@@ -47,8 +47,8 @@ var SocketHandler = (function(){
   function onMessage(evt) {
     //console.log(evt.data);
     message = JSON.parse(evt.data);
-    if ( message.time !== undefined) {
-      $('#server_time').html(message.time);
+    if ( message.volts !== undefined) {
+      $('#server_volts').html(message.volts);
     }
     if(message.reply !== undefined) {
       $('#server_reply').html(message.reply);

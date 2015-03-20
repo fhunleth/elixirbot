@@ -97,14 +97,18 @@ enum I2cRegisters {
     I2cRegRightServoHi,
     I2cRegBatteryLo,
     I2cRegBatteryHi,
+    I2cRegReadRequestCount,
+    I2cRegWriteRequestCount,
     I2cRegCount
 };
 
-volatile uint8_t currentRegister = 0;
+static volatile uint8_t currentRegister = 0;
 
-uint16_t leftServoMicros = 1500;
-uint16_t rightServoMicros = 1500;
-uint16_t batteryMicroVolts = 0;
+static uint16_t leftServoMicros = 1500;
+static uint16_t rightServoMicros = 1500;
+static uint16_t batteryMicroVolts = 0;
+static uint8_t readRequestCount = 0;
+static uint8_t writeRequestCount = 0;
 
 #if F_CPU == 8000000L
 // Divide FCLK by 64 -> 8 MHz/64 = 125 KHz (each tick is 8 uS)
@@ -118,7 +122,9 @@ uint16_t batteryMicroVolts = 0;
  */
 void requestEvent()
 {
-    byte value = 0;
+    readRequestCount++;
+
+    byte value;
     switch (currentRegister) {
     case I2cRegLeftServoLo:
         value = lowByte(leftServoMicros);
@@ -138,11 +144,32 @@ void requestEvent()
     case I2cRegBatteryHi:
         value = highByte(batteryMicroVolts);
         break;
+    case I2cRegReadRequestCount:
+        value = readRequestCount;
+        break;
+    case I2cRegWriteRequestCount:
+        value = writeRequestCount;
+        break;
+    default:
+        value = 0;
+        break;
     }
     TinyWireS.send(value);
     currentRegister++;
     if (currentRegister >= I2cRegCount)
         currentRegister = 0;
+}
+
+/*
+ * Remove everything in the receive buffer.
+ * This is usually called in case of error
+ * where we're not quite sure what the user
+ * was doing or whether there was an error.
+ */
+static void flushReceiveBuffer()
+{
+    while (TinyWireS.available())
+        TinyWireS.receive();
 }
 
 /*
@@ -154,16 +181,25 @@ void receiveEvent(uint8_t howMany)
     static uint16_t nextRightServoMicros = 0;
 
     // Sanity check
-    if (howMany < 1 || howMany > I2cRegCount)
+    if (howMany < 1 || howMany > I2cRegCount) {
+        flushReceiveBuffer();
         return;
+    }
 
     // Read register position
     currentRegister = TinyWireS.receive();
     howMany--;
+    writeRequestCount++;
 
     if (currentRegister >= I2cRegCount) {
         // If invalid register, ignore the request
         currentRegister = 0;
+        flushReceiveBuffer();
+
+        // Idle the servos since we're confused
+        // This is mostly for debug.
+        leftServoMicros = 1500;
+        rightServoMicros = 1500;
         return;
     }
 
@@ -191,6 +227,7 @@ void receiveEvent(uint8_t howMany)
         if (currentRegister >= I2cRegCount)
             currentRegister = 0;
     }
+    writeRequestCount += howMany;
 
     if (nextLeftServoMicros >= 1000 && nextLeftServoMicros <= 2000)
         leftServoMicros = nextLeftServoMicros;

@@ -1,6 +1,6 @@
 
 ## Name of the node
--sname demo
+-sname bot
 
 ## Cookie for distributed erlang
 -setcookie democookie

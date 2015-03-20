@@ -31,7 +31,7 @@ defmodule Elixirbot.Mixfile do
     [ { :cowboy, "1.0.0" },
       { :exjsx, "~> 3.1.0" },
       { :exrm, "~> 0.15.0"},
-      { :elixir_ale, github: "fhunleth/elixir_ale", tag: "master"},
+      { :elixir_ale, github: "fhunleth/elixir_ale", tag: "readwrite"},
       { :net_managers, github: "fhunleth/net_managers.ex", tag: "master" }
     ]
   end
