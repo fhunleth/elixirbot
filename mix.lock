@@ -1,7 +1,7 @@
 %{"conform": {:hex, :conform, "0.13.0"},
   "cowboy": {:hex, :cowboy, "1.0.0"},
   "cowlib": {:hex, :cowlib, "1.0.1"},
-  "elixir_ale": {:git, "git://github.com/fhunleth/elixir_ale.git", "116eae175461548913c768df2d1322cfdbdcc733", [tag: "readwrite"]},
+  "elixir_ale": {:git, "git://github.com/fhunleth/elixir_ale.git", "116eae175461548913c768df2d1322cfdbdcc733", [tag: "master"]},
   "exjsx": {:hex, :exjsx, "3.1.0"},
   "exrm": {:hex, :exrm, "0.15.0"},
   "jsx": {:hex, :jsx, "2.4.0"},

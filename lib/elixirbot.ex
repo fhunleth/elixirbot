@@ -42,8 +42,7 @@ defmodule Elixirbot do
 
     profile = %NetProfile{ifname: "wlan0",
                           ipv4_address_method: :dhcp,
-                          wlan: %{ssid: "hunleth", key_mgmt: :"WPA-PSK", psk: "ahqwlhvjgxsltfmy"
-                            #wlan: %{ssid: "coderdojodc", key_mgmt: :"WPA-PSK", psk: "coderdojodc"
+                          wlan: %{ssid: "troodonsw", key_mgmt: :"WPA-PSK", psk: "ca6d7e0d08"
                           }}
     {:ok, nm} = NetManager.start_link
     {:ok, _sm} = WifiManager.start_link(nm, profile)
