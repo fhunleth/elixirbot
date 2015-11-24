@@ -83,3 +83,12 @@ for build and programming instructions.
   2. `. ./nerves-env.sh` in the Nerves directory
   3. Go here and run `make`
 
+## Post-mortem
+
+One thing I learned on this project was that the Raspberry Pi does not support
+clock stretching on the I2C bus. Apparently, this was well documented, but I
+hadn't seen it beforehand. The I2C code on the ATtiny85 does stretch the clock,
+so if you rebuild this exactly, you will see I2C errors. With work, it may be
+possible to fix the clock stretching issue, but if I were to do this project
+again, I would look at another part besides the ATtiny85 or see if the RPi's PWM
+support is improved.
